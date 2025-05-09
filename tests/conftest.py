@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent.parent
-EXERCISES = BASE_DIR / "exercícios"
+EXERCISES = BASE_DIR / "exercicios"
 
 
 @pytest.fixture
