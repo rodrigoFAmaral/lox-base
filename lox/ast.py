@@ -1,13 +1,17 @@
-from typing import Callable
-from dataclasses import dataclass
 from abc import ABC
+from dataclasses import dataclass
+from typing import Callable
+
+from .ctx import Ctx
 
 # Declaramos nossa classe base num módulo separado para esconder um pouco de
-# Python relativamente avançado  de quem não se interessar pelo assunto.
+# Python relativamente avançado de quem não se interessar pelo assunto.
+#
 # A classe Node implementa um método `pretty` que imprime as árvores de forma
-# legível.
+# legível. Também possui funcionalidades para navegar na árvore usando cursores
+# e métodos de visitação.
 from .node import Node
-from .ctx import Ctx
+
 
 #
 # TIPOS BÁSICOS
@@ -36,8 +40,23 @@ class Stmt(Node, ABC):
     """
 
 
+@dataclass
+class Program(Node):
+    """
+    Representa um programa.
+
+    Um programa é uma lista de comandos.
+    """
+
+    stmts: list[Stmt]
+
+    def eval(self, ctx: Ctx):
+        for stmt in self.stmts:
+            stmt.eval(ctx)
+
+
 #
-# Árvores sintáticas
+# EXPRESSÕES
 #
 @dataclass
 class BinOp(Expr):
@@ -55,6 +74,41 @@ class BinOp(Expr):
         left_value = self.left.eval(ctx)
         right_value = self.right.eval(ctx)
         return self.op(left_value, right_value)
+
+
+@dataclass
+class And(Expr):
+    """
+    Uma operação infixa com dois operandos.
+
+    Ex.: x and y
+    """
+
+
+@dataclass
+class Or(Expr):
+    """
+    Uma operação infixa com dois operandos.
+    Ex.: x or y
+    """
+
+
+@dataclass
+class UnaryOp(Expr):
+    """
+    Uma operação prefixa com um operando.
+
+    Ex.: -x, !x
+    """
+
+
+@dataclass
+class Call(Expr):
+    """
+    Uma chamada de função.
+
+    Ex.: fat(42)
+    """
 
 
 @dataclass
@@ -90,6 +144,81 @@ class Var(Expr):
 
 
 @dataclass
+class This(Expr):
+    """
+    Acesso ao `this`.
+
+    Ex.: this
+    """
+
+
+@dataclass
+class Super(Expr):
+    """
+    Acesso a method ou atributo da superclasse.
+
+    Ex.: super.x
+    """
+
+
+@dataclass
+class Assign(Expr):
+    """
+    Atribuição de variável.
+
+    Ex.: x = 42
+    """
+
+
+@dataclass
+class Getattr(Expr):
+    """
+    Acesso a atributo de um objeto.
+
+    Ex.: x.y
+    """
+
+
+@dataclass
+class Setattr(Expr):
+    """
+    Atribuição de atributo de um objeto.
+
+    Ex.: x.y = 42
+    """
+
+
+#
+# COMANDOS
+#
+@dataclass
+class Return(Stmt):
+    """
+    Representa uma instrução de retorno.
+
+    Ex.: return x;
+    """
+
+
+@dataclass
+class Print(Stmt):
+    """
+    Representa uma instrução de impressão.
+
+    Ex.: print "Hello, world!";
+    """
+
+
+@dataclass
+class VarDef(Stmt):
+    """
+    Representa uma declaração de variável.
+
+    Ex.: var x = 42;
+    """
+
+
+@dataclass
 class If(Stmt):
     """
     Representa uma instrução condicional.
@@ -115,5 +244,29 @@ class While(Stmt):
     Ex.: while (x > 0) { ... }
     """
 
-    cond: Expr
-    body: list[Stmt]
+
+@dataclass
+class Block(Node):
+    """
+    Representa bloco de comandos.
+
+    Ex.: { var x = 42; print x;  }
+    """
+
+
+@dataclass
+class Function(Stmt):
+    """
+    Representa uma função.
+
+    Ex.: fun f(x, y) { ... }
+    """
+
+
+@dataclass
+class Class(Stmt):
+    """
+    Representa uma classe.
+
+    Ex.: class B < A { ... }
+    """

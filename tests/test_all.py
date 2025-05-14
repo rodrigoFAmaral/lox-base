@@ -32,6 +32,7 @@ def get_id(example: lox.testing.Example):
     return str(example.path).removeprefix(prefix).removesuffix(".lox")
 
 
+@pytest.mark.full_suite
 @pytest.mark.parametrize("example", EXAMPLES, ids=map(get_id, EXAMPLES))
 def test_all(example):
     example.run_checked()

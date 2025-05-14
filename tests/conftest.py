@@ -27,6 +27,19 @@ LEX_REGEX = re.compile(
 )
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--full-suite",
+        action="store_true",
+        help="Run the full suite of tests. This includes all examples.",
+    )
+
+
+def pytest_runtest_setup(item):
+    if "full_suite" in item.keywords and not item.config.getoption("--full-suite"):
+        pytest.skip("need --full-suite option to run this test")
+
+
 @pytest.fixture
 def exercises_folder():
     """

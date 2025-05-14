@@ -75,7 +75,7 @@ def parse_expr(src: str) -> Expr:
         7
     """
     tree = ast_parser.parse(src, start="expr")
-    assert isinstance(tree, Expr), f"Esperava um Stmt, mas recebi {type(tree)}"
+    assert isinstance(tree, Expr), f"Esperava um Expr, mas recebi {type(tree)}"
     tree.validate_tree()
     tree.desugar_tree()
     return tree
