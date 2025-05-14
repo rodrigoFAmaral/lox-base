@@ -1,3 +1,4 @@
+from math import sqrt
 from time import time
 from types import MappingProxyType
 from typing import TYPE_CHECKING, MutableMapping, TypeVar, cast
@@ -12,11 +13,17 @@ builtins = cast(dict[str, "Value"], MappingProxyType({"clock": time, "super": su
 ScopeDict = dict[str, "Value"]
 
 
-class Ctx(MutableMapping[str, "Value"]):
+class Ctx(dict[str, "Value"]):
     """
     Contexto de execução. Por enquanto é só um dicionário que armazena nomes
     das variáveis e seus respectivos valores.
     """
+    
+    def __init__(self):
+        super().__init__()
+        self["sqrt"] = sqrt
+        self["clock"] = time
+        self["max"] = max
 
     @classmethod
     def from_dict(cls, env: dict[str, "Value"]) -> "Ctx":

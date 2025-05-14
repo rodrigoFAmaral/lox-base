@@ -77,6 +77,38 @@ class BinOp(Expr):
 
 
 @dataclass
+class Var(Expr):
+    """
+    Uma variável no código
+
+    Ex.: x, y, z
+    """
+
+    name: str
+
+    def eval(self, ctx: Ctx):
+        try:
+            return ctx[self.name]
+        except KeyError:
+            raise NameError(f"variável {self.name} não existe!")
+
+
+@dataclass
+class Literal(Expr):
+    """
+    Representa valores literais no código, ex.: strings, booleanos,
+    números, etc.
+
+    Ex.: "Hello, world!", 42, 3.14, true, nil
+    """
+
+    value: Value
+
+    def eval(self, ctx: Ctx):
+        return self.value
+
+
+@dataclass
 class And(Expr):
     """
     Uma operação infixa com dois operandos.
@@ -109,38 +141,18 @@ class Call(Expr):
 
     Ex.: fat(42)
     """
-
-
-@dataclass
-class Literal(Expr):
-    """
-    Representa valores literais no código, ex.: strings, booleanos,
-    números, etc.
-
-    Ex.: "Hello, world!", 42, 3.14, true, nil
-    """
-
-    value: Value
-
-    def eval(self, ctx: Ctx):
-        return self.value
-
-
-@dataclass
-class Var(Expr):
-    """
-    Uma variável no código
-
-    Ex.: x, y, z
-    """
-
     name: str
-
+    params: list[Expr]
+    
     def eval(self, ctx: Ctx):
-        try:
-            return ctx[self.name]
-        except KeyError:
-            raise NameError(f"variável {self.name} não existe!")
+        func = ctx[self.name]
+        params = []
+        for param in self.params:
+            params.append(param.eval(ctx))
+        
+        if callable(func):
+            return func(*params)
+        raise TypeError(f"{self.name} não é uma função!")
 
 
 @dataclass
@@ -192,20 +204,25 @@ class Setattr(Expr):
 # COMANDOS
 #
 @dataclass
-class Return(Stmt):
-    """
-    Representa uma instrução de retorno.
-
-    Ex.: return x;
-    """
-
-
-@dataclass
 class Print(Stmt):
     """
     Representa uma instrução de impressão.
 
     Ex.: print "Hello, world!";
+    """
+    expr: Expr
+    
+    def eval(self, ctx: Ctx):
+        value = self.expr.eval(ctx)
+        print(value)
+
+
+@dataclass
+class Return(Stmt):
+    """
+    Representa uma instrução de retorno.
+
+    Ex.: return x;
     """
 
 

@@ -15,25 +15,19 @@ Se você não conseguir pensar em exemplos para uma categoria, escreva "nenhum" 
 """
 
 VALIDOS_EM_AMBAS_ESPECIFICACOES: list[str] = [
-    "n1",
-    "n2",
-    "n3",
-    "n4",
-    "n5",
+    "1",
+    "2.72",
+    "3",
+    "42",
+    "5",
 ]
 
 VALIDOS_EM_LOX_E_INVALIDOS_NA_NOSSA_VERSAO: list[str] = [
-    "n1",
-    "n2",
-    "n3",
-    "n4",
-    "n5",
+    "01",
+    "02",
+    "03.14",
+    "04",
+    "007",
 ]
 
-VALIDOS_NA_NOSSA_VERSAO_E_INVALIDOS_EM_LOX: list[str] = [
-    "n1",
-    "n2",
-    "n3",
-    "n4",
-    "n5",
-]
+VALIDOS_NA_NOSSA_VERSAO_E_INVALIDOS_EM_LOX: list[str] = []

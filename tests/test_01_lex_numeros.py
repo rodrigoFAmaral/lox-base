@@ -53,7 +53,7 @@ def common_test(exemplos: list[str], lox=bool, ours=bool):
         assert check(ours, ex, MY_NUMBER_RE), msg
 
         msg = f"resposta[{n}]={ex!r} {should(lox)} ser aceito em lox"
-        assert check(lox, ex, MY_NUMBER_RE), msg
+        assert check(lox, ex, LOX_NUMBER_RE), msg
 
     repeated = set()
     for ex in exemplos:
