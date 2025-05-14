@@ -1,3 +1,9 @@
+"""
+ATENÇÃO: EVITE MODIFICAR ESTE ARQUIVO!
+
+Define estrutura de dados básicas para as árvores sintáticas.
+"""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import singledispatch
@@ -72,7 +78,7 @@ class Node(ABC):
         #
         # No caso simples, imprimimos a classe usando str(self). Fazemos isso se
         # a classe não tiver nenhum filho do tipo Node.
-        if self.is_leaf():
+        if can_print_as_leaf(self):
             yield indent_level, str(self)
             return
 
@@ -125,12 +131,16 @@ class Node(ABC):
     def _pretty_lines_list(
         self,
         attr: str,
-        value: Iterable[Any],
+        value: list[Any] | tuple[Any],
         indent_level: int = 0,
     ) -> Iterator[tuple[int, str]]:
         """
         Método auxiliar para imprimir listas de forma legível.
         """
+        if all(not isinstance(item, Node) for item in value):
+            yield indent_level + 1, f"{attr}={list(value)}"
+            return
+
         yield indent_level + 1, f"{attr}=["
 
         for item in value:
@@ -193,14 +203,27 @@ class Node(ABC):
         for child in self.children():
             yield from child.descendants()
 
-    def cursor(self) -> "Cursor[Self]":
+    def cursor(self, cursor: Optional["Cursor[Self]"] = None) -> "Cursor[Self]":
         """
         Retorna um cursor para o nó atual.
 
         O método `cursor` retorna um cursor para o nó atual. Isso é útil
         para navegar na árvore sintática de forma recursiva.
         """
-        return Cursor(self)
+        if cursor is None:
+            return Cursor(self)
+
+        if cursor.node is self:
+            return cursor
+
+        # Busca em largura
+        pending = [cursor]
+        while pending:
+            cursor = pending.pop()
+            if cursor.node is self:
+                return cursor
+            pending.extend(cursor.children())
+        raise ValueError("O cursor não aponta para o nó atual")
 
     def replace_child(self, old: "Node", new: "Node") -> None:
         """
@@ -223,6 +246,42 @@ class Node(ABC):
                             raise TypeError(msg)
                         value[i] = new
                         return
+
+    def desugar_self(self):
+        """
+        Método que transforma o nó atual em uma versão sem auxílios sintáticos.
+
+        A implementação padrão não faz nada, mas subclasses podem
+        sobrescrever esse método para realizar transformações específicas.
+        """
+
+    def desugar_tree(self):
+        """
+        Remove açúcar sintático do nó atual e todos os filhos.
+        """
+        pending = [self.cursor()]
+
+        while pending:
+            cursor = pending.pop()
+            cursor.node.desugar_self()
+            pending.extend(cursor.children())
+
+    def validate_self(self, cursor: "Cursor[Node]"):
+        """
+        Realiza a análise semântica do nó atual.
+
+        Recebe um cursor focado no objecto com relação à raiz do módulo. Isso
+        pode util para fazer consultas sobre os nós pais, irmãos, etc.
+
+        Caso o nó não seja válido, deve lançar uma exceção do tipo SemanticError.
+        """
+
+    def validate_tree(self):
+        """
+        Valida o nó atual e todos os filhos.
+        """
+        for cursor in self.cursor().descendants():
+            cursor.node.validate_self(cursor)
 
 
 @dataclass
@@ -317,7 +376,6 @@ class Cursor(Generic[N]):
         """
         if skip is None or not skip(self):
             if not skip_self:
-
                 yield cast("Cursor[Node]", self)
             for child in self.children():
                 yield from child.descendants(skip)
@@ -418,3 +476,29 @@ def visit_once(obj: Node, visitors: dict[type[Node], Callable[[N], Any]]) -> Non
             break
         except KeyError:
             continue
+
+
+def can_print_as_leaf(node: Node) -> bool:
+    """
+    Verifica se o nó pode ser impresso como uma folha.
+
+    Um nó pode ser impresso como uma folha se não tem filhos do tipo `Node`.
+    """
+    while node:
+        args = []
+        for attr in node.__annotations__:
+            obj = getattr(node, attr)
+            if isinstance(obj, (list, tuple)) and obj:
+                return False
+            elif isinstance(obj, Node):
+                args.append(obj)
+
+        match args:
+            case []:
+                return True
+            case [arg]:
+                node = arg
+            case _:
+                return False
+
+    return True

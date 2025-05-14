@@ -10,14 +10,30 @@ Esta expressão é baseada no formato numérico do JSON e não do Lox! Dê uma o
 no capítulo https://craftinginterpreters.com/scanning.html#number-literals e
 escreva cinco exemplos de strings que representam números de cada categoria
 abaixo, quando possível.
+
+Se você não conseguir pensar em exemplos para uma categoria, escreva "nenhum" ou deixe uma lista vazia.
 """
 
-VALIDOS_EM_AMBAS_ESPECIFICACOES = [
-    ...,
+VALIDOS_EM_AMBAS_ESPECIFICACOES: list[str] = [
+    "n1",
+    "n2",
+    "n3",
+    "n4",
+    "n5",
 ]
-VALIDOS_EM_LOX_E_INVALIDOS_NA_NOSSA_VERSAO = [
-    ...,
+
+VALIDOS_EM_LOX_E_INVALIDOS_NA_NOSSA_VERSAO: list[str] = [
+    "n1",
+    "n2",
+    "n3",
+    "n4",
+    "n5",
 ]
-VALIDOS_NA_NOSSA_VERSAO_E_INVALIDOS_EM_LOX = [
-    ...,
+
+VALIDOS_NA_NOSSA_VERSAO_E_INVALIDOS_EM_LOX: list[str] = [
+    "n1",
+    "n2",
+    "n3",
+    "n4",
+    "n5",
 ]

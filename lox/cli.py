@@ -1,4 +1,6 @@
 """
+ATENÇÃO: EVITE MODIFICAR ESTE ARQUIVO!
+
 Esse módulo usa a biblioteca `argparse` para criar uma interface de linha de comando
 (CLI) para o compilador de Lox.
 
@@ -12,11 +14,9 @@ padrão do Python e não requer instalação de dependências externas.
 
 import argparse
 
-from lark import ParseError
-from .ast import Var
-from .ctx import Ctx
-from .lox import parse, parse_cst, lex
-from .runtime import lox_show
+
+from .parser import lex, parse, parse_cst
+from . import eval as lox_eval
 
 
 def make_argparser():
@@ -61,93 +61,24 @@ def main():
         print(f"Arquivo {args.file} não encontrado.")
         exit(1)
 
-    if args.file.endswith(".elox"):
-        ctx = Ctx()
-        for line in source.splitlines():
-            line = line.strip()
-            if line.startswith("//") or not line:
-                continue
-            process_source_line(line, args, ctx=ctx)
-
-    elif not args.ast and not args.cst and not args.lex:
-        run(source)
+    if not args.ast and not args.cst and not args.lex:
+        lox_eval(source)
     else:
         debug_source(source, args)
 
 
-def debug_source(source: str, args, expr: bool = False):
+def debug_source(source: str, args):
     """
     Mostra informações de depuração sobre o código Lox passado como argumento.
     """
     if args.ast:
-        ast = parse(source, expr=expr)
+        ast = parse(source)
         print(ast.pretty())
 
     if args.cst:
-        cst = parse_cst(source, expr=expr)
+        cst = parse_cst(source)
         print(cst.pretty())
 
     if args.lex:
         for token in lex(source):
             print(f"{token.type}: {token.value}")
-
-
-def process_source_line(source: str, args, ctx: Ctx):
-    """
-    Processa uma linha de código Lox e executa o commando correspondente.
-    """
-
-    try:
-        from rich import print
-
-        print(f"[red bold]{source}")
-    except ImportError:
-        print(source)
-
-    if not args.ast and not args.cst and not args.lex:
-        run_expr(source, ctx)
-    else:
-        debug_source(source, args, expr=True)
-
-
-def run(source: str):
-    """
-    Executa o código Lox passado como argumento.
-
-    Essa função é chamada quando o usuário não especifica nenhuma opção de
-    impressão. Ela executa o código Lox normalmente.
-    """
-    module = parse(source)
-    module["main"].eval(Ctx())
-
-
-def run_expr(source: str, ctx: Ctx):
-    """
-    Executa a expressão Lox passada como argumento.
-
-    Pergunta para o usuário o valor de todas as variáveis usadas na expressão.
-    """
-
-    ast = parse(source, expr=True)
-
-    def ask_var(var: Var):
-        print(ctx)
-        if var.name in ctx:
-            return
-
-        value = input(f"  {var.name}: ")
-        if value in ("", "nil"):
-            ctx[var.name] = None
-            return
-
-        try:
-            expr_ast = parse(value, expr=True)
-        except ParseError:
-            print(f"Erro ao avaliar expressão: {value}")
-            ask_var(var)
-        else:
-            ctx[var.name] = expr_ast.eval(ctx)
-
-    ast.visit({Var: ask_var})
-    value = ast.eval(ctx)
-    print(f"-> {lox_show(value)}")

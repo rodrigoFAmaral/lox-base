@@ -1,7 +1,7 @@
-from lark import ParseError, Token, UnexpectedCharacters
 import pytest
+from lark import ParseError, Token, UnexpectedCharacters
 
-from lox import parse
+from lox import parse_expr
 from lox.ast import Literal
 
 good_strings = {
@@ -19,7 +19,7 @@ bad_strings = [
 
 
 def test_convert_string_to_literal_value():
-    ast = parse('"string"', expr=True)
+    ast = parse_expr('"string"')
     if isinstance(ast, Token):
         msg = "Precisa implementar o método def STRING(self, token) no LoxTransformer que converte o token para um Literal(str)"
         raise ValueError(msg)
@@ -37,7 +37,7 @@ def test_convert_string_to_literal_value():
 
 @pytest.mark.parametrize("src, expected", good_strings.items())
 def test_good_strings(src: str, expected: str):
-    ast = parse(src, expr=True)
+    ast = parse_expr(src)
     assert isinstance(ast, Literal)
     assert ast.value == expected
 
@@ -45,4 +45,4 @@ def test_good_strings(src: str, expected: str):
 @pytest.mark.parametrize("src", bad_strings)
 def test_bad_strings(src):
     with pytest.raises((ParseError, UnexpectedCharacters)):
-        parse(src, expr=True)
+        parse_expr(src)
