@@ -17,7 +17,6 @@ from typing import (
     Iterator,
     Optional,
     TypeVar,
-    Self,
     cast,
 )
 
@@ -203,7 +202,7 @@ class Node(ABC):
         for child in self.children():
             yield from child.descendants()
 
-    def cursor(self, cursor: Optional["Cursor[Self]"] = None) -> "Cursor[Self]":
+    def cursor(self, cursor: Optional["Cursor[N]"] = None) -> "Cursor[N]":
         """
         Retorna um cursor para o nó atual.
 
@@ -211,7 +210,7 @@ class Node(ABC):
         para navegar na árvore sintática de forma recursiva.
         """
         if cursor is None:
-            return Cursor(self)
+            return Cursor(self) # type: ignore
 
         if cursor.node is self:
             return cursor

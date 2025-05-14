@@ -1,4 +1,14 @@
-?start     : expr
+?start     : program
+
+program    : stmt*
+
+?stmt      : expr ";"
+           | print_cmd
+           // | if_cmd
+           // | for_cmd
+           // | ...
+
+print_cmd  : "print" expr ";"
 
 // EXPRESSÕES
 ?expr      : test
@@ -22,18 +32,21 @@
            | atom
 
 ?atom      : NUMBER 
+           | BOOL
            | VAR
            | STRING
            | NIL
-           | BOOL
            | "(" cmp ")"
+           | call
 
-VAR        : /[a-z_]\w*/
+call       : VAR "(" params ")"
+params     : [ expr ("," expr )* ]
+
+BOOL.2     : "true" | "false"
+VAR.1      : /[a-z_]\w*/
 NUMBER     : /([1-9][0-9]*|0)(\.[0-9]+)?/ 
-//STRING     : /"[^"\n]*"/
 STRING     : /"[^"]*"/
-BOOL       : "true" | "false"
-NIL        : "nil"
+NIL.2      : "nil"
 COMMENT    : "//" /[^\n]*/
 
 %ignore /\s/ | COMMENT

@@ -183,7 +183,7 @@ def load_examples(name: str = "", exclude: set = set(), only: set | None = None)
 
 @lru_cache(maxsize=512)
 def load_example(place: Path) -> Example:
-    return Example(place.read_text(), path=place)
+    return Example(place.read_text(encoding="utf-8"), path=place)
 
 
 @lru_cache(maxsize=512)
