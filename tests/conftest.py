@@ -148,5 +148,20 @@ def ex__(src__, ast__, cst__):
 
 
 @pytest.fixture
+def astf(src, parser):
+    return lambda: parser(src)
+
+
+@pytest.fixture
+def ast_f(src_, parser):
+    return lambda: parser(src_)
+
+
+@pytest.fixture
+def ast__f(src__, parser):
+    return lambda: parser(src__)
+
+
+@pytest.fixture
 def exs(ex, ex_, ex__) -> list[Example]:
     return [ex, ex_, ex__]
