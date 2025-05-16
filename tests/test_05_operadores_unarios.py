@@ -59,7 +59,7 @@ def test_suporta_construção_de_ast(ast, ast_, ast__):
 
 def test_implementa_a_função_eval(exs):
     def ctx():
-        return {"sqrt": math.sqrt}
+        return Ctx.from_dict({"sqrt": math.sqrt})
 
     for ex in exs:
         print(f"Testando {ex.src=}")

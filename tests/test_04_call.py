@@ -73,12 +73,14 @@ def test_renomeou_o_atributo_name_da_ast(ast: Call):
 
 def test_implementa_a_função_eval(exs):
     def ctx():
-        return {
-            "sqrt": math.sqrt,
-            "obj": SimpleNamespace(method=lambda *args: args),
-            "foo": lambda *args: lambda *args2: args + args2,
-            "sub_arg_2": lambda *args: args,
-        }
+        return Ctx.from_dict(
+            {
+                "sqrt": math.sqrt,
+                "obj": SimpleNamespace(method=lambda *args: args),
+                "foo": lambda *args: lambda *args2: args + args2,
+                "sub_arg_2": lambda *args: args,
+            }
+        )
 
     for ex in exs:
         print(f"Testando {ex.src=}")
