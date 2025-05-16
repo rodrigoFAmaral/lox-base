@@ -33,3 +33,10 @@ a flag `--help`. O comando abaixo, por exemplo, mostra somente a primeira falha 
 limita os testes ao módulo lex_numeros.
 
     $ uv run pytest --maxfail=1 -k lex_numeros
+
+Podemos executar a suite de testes completa, incluindo os testes de validação na pasta exemplos, usando 
+
+    $ uv run pytest --full-suite
+
+Note que são **muitos** testes e vários deles estão falhando no estado atual do 
+interpretador.

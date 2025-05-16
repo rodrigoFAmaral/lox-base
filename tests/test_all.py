@@ -1,4 +1,5 @@
 import pytest
+
 import lox.testing
 
 EXAMPLES = [
@@ -34,5 +35,5 @@ def get_id(example: lox.testing.Example):
 
 @pytest.mark.full_suite
 @pytest.mark.parametrize("example", EXAMPLES, ids=map(get_id, EXAMPLES))
-def test_all(example):
-    example.run_checked()
+def test_all(example: lox.testing.Example):
+    example.test_example()

@@ -1,9 +1,13 @@
 import re
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, NamedTuple
 
 import pytest
+from lark import Tree
+
+import lox
+from lox.ast import Expr, Program
 
 pytest.register_assert_rewrite("lox.testing")
 
@@ -25,6 +29,12 @@ LEX_REGEX = re.compile(
     """,
     re.VERBOSE,
 )
+
+
+class Example(NamedTuple):
+    src: str
+    ast: Expr | Program
+    cst: Tree
 
 
 def pytest_addoption(parser):
@@ -83,3 +93,60 @@ def mod_loader(exercises_folder: Path):
         return SimpleNamespace(**ns)
 
     return loader
+
+
+@pytest.fixture
+def parser(expr: bool):
+    if expr:
+        return lox.parse_expr
+    return lox.parse
+
+
+@pytest.fixture
+def cst(src) -> Tree:
+    return lox.parse_cst(src)
+
+
+@pytest.fixture
+def ast(src, parser):
+    return parser(src)
+
+
+@pytest.fixture
+def cst_(src_) -> Tree:
+    return lox.parse_cst(src_)
+
+
+@pytest.fixture
+def ast_(src_, parser):
+    return parser(src_)
+
+
+@pytest.fixture
+def cst__(src__) -> Tree:
+    return lox.parse_cst(src__)
+
+
+@pytest.fixture
+def ast__(src__, parser):
+    return parser(src__)
+
+
+@pytest.fixture
+def ex(src, ast, cst):
+    Example(src, ast, cst)
+
+
+@pytest.fixture
+def ex_(src_, ast_, cst_):
+    Example(src_, ast_, cst_)
+
+
+@pytest.fixture
+def ex__(src__, ast__, cst__):
+    Example(src__, ast__, cst__)
+
+
+@pytest.fixture
+def exs(ex, ex_, ex__) -> list[Example]:
+    return [ex, ex_, ex__]

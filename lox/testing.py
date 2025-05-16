@@ -11,10 +11,14 @@ import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from typing import Iterable
+from unittest import TestCase
 
+import pytest
 from lark import Tree, UnexpectedCharacters, UnexpectedToken
 
-from . import Node, parse, eval as lox_eval
+from . import Node, parse
+from . import eval as lox_eval
 from .ctx import Ctx
 from .errors import SemanticError
 
@@ -50,9 +54,9 @@ class Example:
     """
 
     src: str
+    path: Path
     error: Error | None = None
     outputs: list[str] = field(default_factory=list)
-    path: Path | None = None
 
     def __post_init__(self):
         for m in LEX_REGEX.finditer(self.src):
@@ -74,7 +78,7 @@ class Example:
                 break
 
     @property
-    def is_valid(self) -> bool:
+    def has_valid_syntax(self) -> bool:
         """
         Verifica se o exemplo possui uma sintaxe válida.
         """
@@ -87,7 +91,7 @@ class Example:
         """
         return self.error is not None and self.error.runtime
 
-    def run(self) -> tuple[Ctx, str]:
+    def eval(self) -> tuple[Ctx, str]:
         """
         Executa o exemplo.
         """
@@ -103,15 +107,15 @@ class Example:
                 raise
         return ctx, stdout.getvalue()
 
-    def run_checked(self):
+    def test_example(self):
         """
         Executa o exemplo e verifica a saída padrão e erros.
         """
 
         try:
-            if self.is_valid:
+            if self.has_valid_syntax:
                 self.check_fully_converted()
-                ctx, stdout = self.run()
+                ctx, stdout = self.eval()
                 stdout = stdout.rstrip("\n")
                 expect = "\n".join(self.outputs)
                 if not self.expect_runtime_error:
@@ -154,6 +158,39 @@ class Example:
                 raise ValueError("árvore inválida")
 
         ast.visit({object: assert_not_lark})
+
+
+class ExampleTester(TestCase):
+    module: str = ""
+    exclude: set["str"] | None = None
+    examples: set["str"] | None = None
+
+    @pytest.fixture
+    def exs(self) -> Iterable[Example]:
+
+        if self.examples is not None:
+            return load_examples(self.module, only=self.examples)
+        if self.exclude is not None:
+            if not self.module:
+                raise RuntimeError("não pode usar 'exclude' no módulo raiz")
+            return load_examples(self.module, exclude=self.exclude)
+
+        msg = f"Classe {self.__class__.__name__} deve definir atributos 'examples' ou  'module'"
+        raise RuntimeError(msg)
+
+    def test_examples_that_should_fail(self, exs: Iterable[Example]):
+        exs = [ex for ex in exs if not ex.has_valid_syntax]
+        n = len(exs)
+        for i, ex in enumerate(exs, start=1):
+            print(f"Testando {i}/{n} - {ex.path.name}")
+            ex.test_example()
+
+    def test_examples_that_should_pass(self, exs: Iterable[Example]):
+        exs = [ex for ex in exs if ex.has_valid_syntax]
+        n = len(exs)
+        for i, ex in enumerate(exs, start=1):
+            print(f"Testando {i}/{n} - {ex.path.name}")
+            ex.test_example()
 
 
 def load_examples(name: str = "", exclude: set = set(), only: set | None = None):

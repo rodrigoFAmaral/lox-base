@@ -4,7 +4,7 @@ ATENÇÃO: EVITE MODIFICAR ESTE ARQUIVO!
 Define estrutura de dados básicas para as árvores sintáticas.
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from functools import singledispatch
 from types import BuiltinFunctionType, FunctionType, MethodDescriptorType, MethodType
@@ -36,9 +36,9 @@ class Node(ABC):
     criar subclasses que implementem os métodos abstratos definidos aqui.
     """
 
-    @abstractmethod
     def eval(self, ctx):
-        raise NotImplementedError("Método eval não implementado!")
+        name = type(self).__name__
+        raise NotImplementedError(f"Método eval não implementado para {name}!")
 
     def pretty(self, indent: int = 2) -> str:
         """
@@ -210,7 +210,7 @@ class Node(ABC):
         para navegar na árvore sintática de forma recursiva.
         """
         if cursor is None:
-            return Cursor(self) # type: ignore
+            return Cursor(self)  # type: ignore
 
         if cursor.node is self:
             return cursor
