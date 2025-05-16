@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Iterable
 from unittest import TestCase
 
-import pytest
 from lark import Tree, UnexpectedCharacters, UnexpectedToken
 
 from . import Node, parse
@@ -161,39 +160,45 @@ class Example:
 
 
 class ExampleTester(TestCase):
-    module: str = ""
-    exclude: set["str"] | None = None
-    examples: set["str"] | None = None
+    module: str
+    exclude: set[str] | None = None
+    examples: set[str] | None = None
 
-    @pytest.fixture
-    def exs(self) -> Iterable[Example]:
+    def check_module(self):
+        name = self.check_module.__qualname__.split(".")[0]
+        if not hasattr(self, "module"):
+            raise RuntimeError(f"Classe {name} deve definir o atributo 'module'")
+        if self.examples is None and self.exclude is None:
+            raise RuntimeError(
+                f"Classe {name} deve definir atributos 'examples' ou 'exclude'"
+            )
 
-        if self.examples is not None:
-            return load_examples(self.module, only=self.examples)
+    def get_examples(self) -> Iterable[Example]:
+        self.check_module()
         if self.exclude is not None:
-            if not self.module:
-                raise RuntimeError("não pode usar 'exclude' no módulo raiz")
             return load_examples(self.module, exclude=self.exclude)
+        return load_examples(self.module, only=self.examples)
 
-        msg = f"Classe {self.__class__.__name__} deve definir atributos 'examples' ou  'module'"
-        raise RuntimeError(msg)
-
-    def test_examples_that_should_fail(self, exs: Iterable[Example]):
-        exs = [ex for ex in exs if not ex.has_valid_syntax]
+    def test_examples_that_should_fail(self):
+        exs = [ex for ex in self.get_examples() if not ex.has_valid_syntax]
         n = len(exs)
         for i, ex in enumerate(exs, start=1):
             print(f"Testando {i}/{n} - {ex.path.name}")
             ex.test_example()
 
-    def test_examples_that_should_pass(self, exs: Iterable[Example]):
-        exs = [ex for ex in exs if ex.has_valid_syntax]
+    def test_examples_that_should_pass(self):
+        exs = [ex for ex in self.get_examples() if ex.has_valid_syntax]
         n = len(exs)
         for i, ex in enumerate(exs, start=1):
             print(f"Testando {i}/{n} - {ex.path.name}")
             ex.test_example()
 
 
-def load_examples(name: str = "", exclude: set = set(), only: set | None = None):
+def load_examples(
+    name: str = "",
+    exclude: set[str] = set(),
+    only: set[str] | None = None,
+):
     """
     Carrega exemplos de código.
     """

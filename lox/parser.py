@@ -7,11 +7,11 @@ análise léxica, etc.
 
 from pathlib import Path
 from typing import Iterator
+
 from lark import Lark, Token, Tree
 
+from .ast import Expr, Program
 from .transformer import LoxTransformer
-from .ast import Program, Expr
-
 
 DIR = Path(__file__).parent
 GRAMMAR_PATH = DIR / "grammar.lark"
@@ -41,8 +41,6 @@ def parse(src: str) -> Program:
     Args:
         src (str):
             Código fonte a ser analisado.
-        semantic_check (bool):
-            Se True (padrão) realiza a análise semântica do código.
     """
     tree = ast_parser.parse(src, start="start")
     assert isinstance(tree, Program), f"Esperava um Program, mas recebi {type(tree)}"
@@ -64,8 +62,6 @@ def parse_expr(src: str) -> Expr:
     Args:
         src (str):
             Código fonte a ser analisado.
-        semantic_check (bool):
-            Se True (padrão) realiza a análise semântica do código.
 
     Examples:
         >>> parse_expr("1 + 2")
@@ -81,7 +77,7 @@ def parse_expr(src: str) -> Expr:
     return tree
 
 
-def parse_cst(src: str) -> Tree:
+def parse_cst(src: str, expr: bool = False) -> Tree:
     """
     Similar a função `parse`, mas retorna a árvore sintática produzida pelo
     Lark.
@@ -95,7 +91,8 @@ def parse_cst(src: str) -> Tree:
         expr (bool):
             Se True, analisa o código como se fosse apenas uma expressão.
     """
-    return cst_parser.parse(src, start="start")  # type: ignore
+    start = "expr" if expr else "start"
+    return cst_parser.parse(src, start=start)
 
 
 def lex(src: str) -> Iterator[Token]:

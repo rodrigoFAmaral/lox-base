@@ -6,8 +6,8 @@ import pytest
 from lark import Tree
 
 from lox import *
+from lox import testing
 from lox.ast import *
-from lox.testing import ExampleTester
 
 
 @pytest.fixture
@@ -31,23 +31,26 @@ def src__():
 
 
 def test_suporta_chamada_de_função_na_cst(cst: Tree):
-    assert "sqrt" in cst.pretty()
-    assert "2" in cst.pretty()
+    print(pretty := cst.pretty())
+    assert "sqrt" in pretty
+    assert "2" in pretty
 
 
 def test_suporta_chamada_de_método_na_cst(cst_: Tree):
-    assert "obj" in cst_.pretty()
-    assert "method" in cst_.pretty()
-    assert "1" in cst_.pretty()
-    assert "2" in cst_.pretty()
-    assert "3" in cst_.pretty()
+    print(pretty := cst_.pretty())
+    assert "obj" in pretty
+    assert "method" in pretty
+    assert "1" in pretty
+    assert "2" in pretty
+    assert "3" in pretty
 
 
-def test_suporta_chamada_de_funções_aninhadas_na_cst(cst_: Tree):
-    assert "foo" in cst_.pretty()
-    assert "sub_arg_2" in cst_.pretty()
-    assert "arg" in cst_.pretty()
-    assert "sub-arg-1" in cst_.pretty()
+def test_suporta_chamada_de_funções_aninhadas_na_cst(cst__: Tree):
+    print(pretty := cst__.pretty())
+    assert "foo" in pretty
+    assert "sub_arg_2" in pretty
+    assert "arg" in pretty
+    assert "sub-arg-1" in pretty
 
 
 def test_suporta_chamada_de_função_na_ast(ast, ast_, ast__):
@@ -74,6 +77,7 @@ def test_implementa_a_função_eval(exs):
             "sqrt": math.sqrt,
             "obj": SimpleNamespace(method=lambda *args: args),
             "foo": lambda *args: lambda *args2: args + args2,
+            "sub_arg_2": lambda *args: args,
         }
 
     for ex in exs:
@@ -86,6 +90,6 @@ def test_implementa_a_função_eval(exs):
         ), f"[Call.eval]: esperava {expect} mas encontrei {result}"
 
 
-class TestExamples(ExampleTester):
+class TestExamples(testing.ExampleTester):
     module = "call"
     examples = {"bool", "nil", "num", "string"}

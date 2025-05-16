@@ -4,8 +4,8 @@ import pytest
 from lark import Tree
 
 from lox import *
+from lox import testing
 from lox.ast import *
-from lox.testing import ExampleTester
 
 
 @pytest.fixture
@@ -54,13 +54,21 @@ def test_implementa_a_função_eval(ast: Expr, ast_: Expr):
     print(f"Testando com {obj=}")
     assert ast.eval(Ctx.from_dict({"obj": obj})) == "ok"  # type: ignore
 
-    x = 3
-    y = 0.1415
+    class Num(float):
+        def __add__(self, other):
+            return Num(super().__add__(other))
+
+        @property
+        def attr(self):
+            return int(self)
+
+    x = Num(3)
+    y = Num(0.1415)
     print(f"Testando com {x=}, {y=}")
-    assert ast_.eval(Ctx.from_dict({"x": x, "y": y})) == x + y  # type: ignore
+    assert ast_.eval(Ctx.from_dict({"x": x, "y": y})) == (x + y).attr  # type: ignore
 
 
-class TestExamples(ExampleTester):
+class TestExamples(testing.ExampleTester):
     module = "field"
     examples = {
         "get_on_bool",

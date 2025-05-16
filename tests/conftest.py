@@ -103,8 +103,8 @@ def parser(expr: bool):
 
 
 @pytest.fixture
-def cst(src) -> Tree:
-    return lox.parse_cst(src)
+def cst(src, expr) -> Tree:
+    return lox.parse_cst(src, expr=expr)
 
 
 @pytest.fixture
@@ -113,8 +113,8 @@ def ast(src, parser):
 
 
 @pytest.fixture
-def cst_(src_) -> Tree:
-    return lox.parse_cst(src_)
+def cst_(src_, expr) -> Tree:
+    return lox.parse_cst(src_, expr=expr)
 
 
 @pytest.fixture
@@ -123,8 +123,8 @@ def ast_(src_, parser):
 
 
 @pytest.fixture
-def cst__(src__) -> Tree:
-    return lox.parse_cst(src__)
+def cst__(src__, expr) -> Tree:
+    return lox.parse_cst(src__, expr=expr)
 
 
 @pytest.fixture
@@ -134,17 +134,17 @@ def ast__(src__, parser):
 
 @pytest.fixture
 def ex(src, ast, cst):
-    Example(src, ast, cst)
+    return Example(src, ast, cst)
 
 
 @pytest.fixture
 def ex_(src_, ast_, cst_):
-    Example(src_, ast_, cst_)
+    return Example(src_, ast_, cst_)
 
 
 @pytest.fixture
 def ex__(src__, ast__, cst__):
-    Example(src__, ast__, cst__)
+    return Example(src__, ast__, cst__)
 
 
 @pytest.fixture
