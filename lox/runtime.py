@@ -1,5 +1,5 @@
 import builtins
-from operator import add, eq, ne, ge, gt, le, lt, mul, sub, truediv, not_, neg
+from operator import add, eq, ge, gt, le, lt, mul, ne, neg, not_, sub, truediv
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,6 +22,31 @@ __all__ = [
     "truthy",
     "truediv",
 ]
+
+
+class LoxInstance:
+    """
+    Classe base para todos os objetos Lox.
+    """
+
+
+class LoxFunction:
+    """
+    Classe base para todas as funções Lox.
+    """
+
+
+class LoxReturn(Exception):
+    """
+    Exceção para retornar de uma função Lox.
+    """
+
+
+class LoxError(Exception):
+    """
+    Exceção para erros de execução Lox.
+    """
+
 
 nan = float("nan")
 inf = float("inf")
