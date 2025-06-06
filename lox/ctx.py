@@ -1,8 +1,7 @@
 from math import sqrt
 from time import time
 from types import MappingProxyType
-from typing import TYPE_CHECKING, MutableMapping, TypeVar, cast
-
+from typing import TYPE_CHECKING, TypeVar, cast
 
 if TYPE_CHECKING:
     from .ast import Value
@@ -18,7 +17,7 @@ class Ctx(dict[str, "Value"]):
     Contexto de execução. Por enquanto é só um dicionário que armazena nomes
     das variáveis e seus respectivos valores.
     """
-    
+
     def __init__(self):
         super().__init__()
         self["sqrt"] = sqrt

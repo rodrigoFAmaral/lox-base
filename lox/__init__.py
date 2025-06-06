@@ -6,9 +6,9 @@ Carrega os nomes principais do módulo lox.
 
 from .ast import Expr, Stmt, Value
 from .ctx import Ctx
-from .parser import lex, parse, parse_cst, parse_expr
-from .node import Node
 from .errors import SemanticError
+from .node import Node
+from .parser import lex, parse, parse_cst, parse_expr
 
 __all__ = [
     "Ctx",
@@ -24,15 +24,27 @@ __all__ = [
 ]
 
 
-def eval(src: str, env: Ctx | dict[str, Value] | None = None) -> Ctx:
+def eval(src: str | Node, env: Ctx | dict[str, Value] | None = None) -> Ctx:
     """
     Avalia o código fonte e retorna o ambiente resultante.
+
+    Args:
+        src:
+            Código fonte em formato de string ou um nó AST.
+        env:
+            Ambiente onde as variáveis serão avaliadas. Se omitido, um novo
+            ambiente vazio será criado. Aceita um dicionário mapeando nomes de
+            variáveis para seus valores ou uma instância de `Ctx`.
     """
     if env is None:
         env = Ctx()
     elif not isinstance(env, Ctx):
         env = Ctx.from_dict(env)
-    ast = parse(src)
+
+    if isinstance(src, Node):
+        ast = src
+    else:
+        ast = parse(src)
 
     try:
         return ast.eval(env)
