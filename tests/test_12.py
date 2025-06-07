@@ -77,7 +77,7 @@ class TestExamples(testing.ExampleTester):
         "simple",
         "statement_condition",
         "statement_increment",
-        "statment_initializer",
+        "statement_initializer",
         "var_in_body",
         # "fun_in_body",
         # "class_in_body",

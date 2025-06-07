@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Iterable
 
 import pytest
 from lark import Tree, UnexpectedCharacters, UnexpectedToken
@@ -44,6 +44,7 @@ LEX_REGEX = re.compile(
     """,
     re.VERBOSE,
 )
+NOT_GIVEN = NotImplemented
 
 
 @dataclass(frozen=True)
@@ -98,21 +99,20 @@ class Example:
         """
         return self.error is not None and self.error.runtime
 
-    def eval(self) -> tuple[Ctx, str]:
+    def eval(self) -> tuple[Ctx, str, str | None]:
         """
         Executa o exemplo.
         """
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout) as stdout:
-            ctx = Ctx()
+            ctx = Ctx.from_dict({})
             try:
-                ctx = lox_eval(self.src, ctx)
+                lox_eval(self.src, ctx)
             except Exception as e:
                 if self.error is not None and self.error.runtime:
-                    ctx["runtime-error"] = str(e)
-                    return ctx, ""
+                    return ctx, "", str(e)
                 raise
-        return ctx, stdout.getvalue()
+        return ctx, stdout.getvalue(), None
 
     def test_example(self):
         """
@@ -122,7 +122,7 @@ class Example:
         try:
             if self.has_valid_syntax:
                 self.check_fully_converted()
-                ctx, stdout = self.eval()
+                ctx, stdout, err = self.eval()
                 stdout = stdout.rstrip("\n")
                 expect = "\n".join(self.outputs)
 
@@ -131,7 +131,7 @@ class Example:
                 elif not self.expect_runtime_error:
                     assert expect == stdout
                 else:
-                    assert "runtime-error" in ctx
+                    assert err is not None
             else:
                 try:
                     parse(self.src)
@@ -173,7 +173,7 @@ class Example:
 class ExampleTester:
     module: str
     exclude: set[str] | None = None
-    examples: set[str] | None = None
+    examples: Iterable[str] | None = None
     fuzzy_output: bool = False
 
     def __init_subclass__(cls, **kwargs):
@@ -199,7 +199,7 @@ class ExampleTester:
             )
             ex.test_example()
 
-        test_name = "test_examplo_se_comporta_como_o_esperado"
+        test_name = "test_exemplo_válido"
         test_expected.__name__ = test_name
         test_expected.__qualname__ = f"{name}.{test_name}"
         setattr(cls, test_name, test_expected)
@@ -225,6 +225,9 @@ class ExerciseTester:
     ast_class2: type[Node] = property(lambda self: self.ast_class)  # type: ignore
     ast_class3: type[Node] = property(lambda self: self.ast_class)  # type: ignore
     fuzzy_output: bool = False
+    test_ast = True
+    test_cst = True
+    test_eval = True
     grades = {
         "cst": None,
         "ast": None,
@@ -277,9 +280,12 @@ class ExerciseTester:
         def test_implementa_a_função_eval_alt(self, n: int, grade):
             self.verify_eval(n, grade, alt=True)
 
-        cls.test_exemplo_produz_cst_válida = test_exemplo_produz_cst_válida
-        cls.test_exemplo_produz_ast_válida = test_exemplo_produz_ast_válida
-        cls.test_implementa_a_função_eval = test_implementa_a_função_eval
+        if cls.test_cst:
+            cls.test_exemplo_produz_cst_válida = test_exemplo_produz_cst_válida
+        if cls.test_ast:
+            cls.test_exemplo_produz_ast_válida = test_exemplo_produz_ast_válida
+        if cls.test_eval:
+            cls.test_implementa_a_função_eval = test_implementa_a_função_eval
 
         if hasattr(cls, "eval_env_alt"):
             cls.test_implementa_a_função_eval_alt = test_implementa_a_função_eval_alt
@@ -306,13 +312,13 @@ class ExerciseTester:
         except AttributeError:
             pytest.skip(f"Exemplo {i} não definido")
 
-    def cst(self, i: int) -> Tree:
+    def cst(self, i: int | str) -> Tree:
         """
         Árvore Lark para o exemplo i.
         """
         return self._prop("cst", i, self.parse_cst)
 
-    def ast(self, i: int) -> Node:
+    def ast(self, i: int | str) -> Node:
         """
         AST para o exemplo i.
         """
@@ -342,7 +348,7 @@ class ExerciseTester:
         except AttributeError:
             pytest.skip(f"Ambiente de avaliação para exemplo {i} não definido")
 
-    def verify_cst(self, n: int, grade):
+    def verify_cst(self, n: int, grade=lambda **kwargs: None):
         grade(cst_or=1.0)
 
         cst = self.cst(n)
@@ -353,7 +359,7 @@ class ExerciseTester:
         for tk in self.tks(n):
             assert tk in pretty, f"Token '{tk}' não encontrado na CST: {pretty}"
 
-    def verify_ast(self, n: int, grade):
+    def verify_ast(self, n: int | str, grade=lambda **kwargs: None):
         grade(ast_or=1.0)
 
         ast = self.ast(n)
@@ -366,9 +372,12 @@ class ExerciseTester:
             msg += f"{ast.pretty()}\nImplemente a conversão de CST para AST implementando o método {ast.data} no LoxTransformer."
             raise TypeError(msg)
 
-        cls = self.cls(n)
-        msg = f"Exemplo {n} deve produzir um(a) {cls.__name__}, mas produziu: {type(ast).__name__}"
-        assert isinstance(ast, cls), msg
+        if isinstance(n, int):
+            cls = self.cls(n)
+            msg = f"Exemplo {n} deve produzir um(a) {cls.__name__}, mas produziu: {type(ast).__name__}"
+            assert isinstance(ast, cls), msg
+        else:
+            cls = self.cls(1)
 
         for bad in ast.lark_descendents():
             if isinstance(bad, Tree):
@@ -391,7 +400,12 @@ class ExerciseTester:
         else:
             ctx, expect = self.eval_env(n)
 
-        self.verify_execution(self.ast(n), ctx, expect)
+        try:
+            verifier = getattr(self, "verify_eval_result")
+        except AttributeError:
+            self.verify_execution(self.ast(n), ctx, expect)
+        else:
+            self.verify_execution(self.ast(n), ctx, expect_verifier=verifier)
 
     def assert_stdout_eq(self, stdout: str, expect: str):
         """
@@ -407,7 +421,7 @@ class ExerciseTester:
         Avalia e retorna uma tupla (resultado, stdout).
         """
         if isinstance(ast, str):
-            print("Código lox")
+            print("Código Lox:")
             print(indent(ast))
 
             ast = self.parse(ast)
@@ -423,44 +437,107 @@ class ExerciseTester:
 
         return result, stdout
 
-    def verify_execution(self, ast: Node | str, ctx: Ctx | dict, expect: Any):
+    def verify_execution(
+        self, ast: Node | str, ctx: Ctx | dict, expect: Any = NOT_GIVEN, **kwargs
+    ):
+        """
+        Verifica a execução do código Lox e compara o resultado com o esperado.
+
+        Args:
+            ast (Node | str):
+                O código Lox a ser avaliado, que pode ser uma árvore AST, uma
+                string ou um exemplo identificado por um número.
+            ctx (Ctx | dict):
+                O contexto onde o código será avaliado, que pode ser um objeto
+                Ctx ou um dicionário representando o ambiente.
+            expect (Any, optional):
+                O resultado esperado da avaliação. Pode ser um valor,
+                um dicionário representando o contexto esperado, uma string
+                representando a saída padrão.
+
+                Se não for fornecido, deve ser passado exatamente um argumento
+                nomeado começando com "expect_<method>" com os seguintes
+                métodos:
+                    value: compara a saída com um valor.
+                    ctx: compara o contexto com um dicionário.
+                    stdout: compara a saída padrão com uma string.
+                    verifier: chama uma função de verificação com os resultados.
+                    none: não verifica nada.
+
+        Examples:
+            >>> self.verify_execution(
+            ...     "print x;",
+            ...     {"x": 42},
+            ...     expect_stdout="42\n"
+            ... )
+        """
         print("Avaliando com o contexto:", ctx)
+
         if not isinstance(ctx, Ctx):
             ctx = Ctx.from_dict(ctx)
         result, stdout = self.eval_in_context(ast, ctx)
 
-        # Em expressões, o resultado é o valor da expressão.
-        if self.is_expr:
-            print(f"Resultado: {result}")
-            assert result == expect, f"Esperava encontrar {expect}"
-
-        # Em comandos, o resultado é None e o que importa é o conteúdo do contexto
-        # ou a saída padrão.
-        elif isinstance(expect, dict):
-            print("Contexto esperado:", expect)
-            print("Contexto obtido:", ctx)
-
-            for key, value in expect.items():
-                msg = f"Esperava encontrar variável '{key}' no contexto, não encontrei"
-                assert key in ctx, msg
-                assert ctx[key] == value
-
-        # Comparamos a saída padrão com o esperado.
-        elif isinstance(expect, str):
-            print("\nSaída esperada:")
-            print(indent(expect))
-            print("\nSaída obtida:")
-            print(indent(stdout))
-            if self.fuzzy_output:
-                assert fuzzy(expect) == stdout
-            else:
-                assert stdout == expect
+        if expect is NOT_GIVEN and len(kwargs) != 1:
+            msg = "aceita exatamente 1 argumento nomeado (expect_value, expect_ctx, expect_stdout, expect_verifier)"
+            raise TypeError(msg)
+        elif expect is NOT_GIVEN:
+            [(method, expect)] = kwargs.items()
+            assert method.startswith("expect_")
+            method = method.removeprefix("expect_")
         else:
-            raise TypeError(
-                f"Tipo de resultado inesperado: {type(expect).__name__} (esperado str ou dict)"
-            )
+            if self.is_expr:
+                method = "value"
+            elif isinstance(expect, str):
+                method = "stdout"
+            elif isinstance(expect, dict):
+                method = "ctx"
+            else:
+                method = "unknown"
 
-    def _prop(self, attr: str, i: int, factory: Callable):
+        match method:
+            # Em expressões, o resultado é o valor da expressão.
+            case "value":
+                print(f"Resultado: {result}")
+                assert result == expect, f"Esperava encontrar {expect}"
+
+            # Em comandos, o resultado é None e o que importa é o conteúdo do contexto
+            # ou a saída padrão.
+            case "ctx":
+                print("Contexto esperado:", expect)
+                print("Contexto obtido:", ctx)
+
+                for key, value in expect.items():
+                    msg = f"Esperava encontrar variável '{key}' no contexto, não encontrei"
+                    assert key in ctx, msg
+                    assert ctx[key] == value
+
+            # Comparamos a saída padrão com o esperado.
+            case "stdout":
+                print("\nSaída esperada:")
+                print(indent(expect))
+                print("\nSaída obtida:")
+                print(indent(stdout))
+                if self.fuzzy_output:
+                    assert fuzzy(expect) == stdout
+                else:
+                    assert stdout == expect
+
+            case "none":
+                pass
+
+            case "verifier":
+                if not callable(expect):
+                    raise TypeError(
+                        f"expect_verifier deve ser uma função, mas encontrei {type(expect).__name__}"
+                    )
+                expect(result, stdout, ctx)
+
+            case _:
+                raise TypeError(
+                    f"Tipo de resultado inesperado: {type(expect).__name__} (esperado str ou dict)"
+                )
+
+    def _prop(self, attr: str, i: int | str, factory: Callable):
         """
         Implementação de .ast() e .cst()
         """
@@ -469,8 +546,13 @@ class ExerciseTester:
         except AttributeError:
             pass
 
+        if isinstance(i, str):
+            src = i
+        else:
+            src = self.src(i)
+
         print("\nCódigo Lox:")
-        print(indent(src := self.src(i)))
+        print(indent(src))
         obj = factory(src)
         setattr(self, f"{attr}{i}", obj)
 
@@ -481,6 +563,10 @@ class ExerciseTester:
             print("    <Erro ao imprimir árvore>")
 
         return obj
+
+    if TYPE_CHECKING:
+        # Sobrescrita opcional
+        def verify_eval_result(self, result: Any, stdout: str, ctx: Ctx | dict): ...
 
 
 class fuzzy(str):
@@ -508,17 +594,25 @@ class fuzzy(str):
 def load_examples(
     module: str,
     exclude: set[str] = set(),
-    only: set[str] | None = None,
+    only: Iterable[str] | None = None,
 ):
     """
     Carrega exemplos de código.
     """
-    for path in (EXAMPLES / module).iterdir():
-        name = path.name.removesuffix(".lox")
-        if only is not None:
-            if name in only:
+    base = EXAMPLES / module
+    if only is not None:
+        for name in only:
+            path = base / f"{name}.lox"
+            if path.exists():
                 yield path
-        elif name not in exclude:
+            else:
+                path = path.relative_to(EXAMPLES)
+                raise FileNotFoundError(f"Exemplo {path} não encontrado")
+        return
+
+    for path in sorted((base).iterdir()):
+        name = path.name.removesuffix(".lox")
+        if name not in exclude:
             yield path
 
 

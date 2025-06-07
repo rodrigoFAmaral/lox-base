@@ -24,9 +24,9 @@ __all__ = [
 ]
 
 
-def eval(src: str | Node, env: Ctx | dict[str, Value] | None = None) -> Ctx:
+def eval(src: str | Node, env: Ctx | dict[str, Value] | None = None) -> Value:
     """
-    Avalia o código fonte e retorna o ambiente resultante.
+    Avalia o código fonte e retorna o valur resultante.
 
     Args:
         src:
@@ -37,7 +37,7 @@ def eval(src: str | Node, env: Ctx | dict[str, Value] | None = None) -> Ctx:
             variáveis para seus valores ou uma instância de `Ctx`.
     """
     if env is None:
-        env = Ctx()
+        env = Ctx.from_dict({})
     elif not isinstance(env, Ctx):
         env = Ctx.from_dict(env)
 
