@@ -46,6 +46,18 @@ def make_argparser():
         action="store_true",
         help="Imprime a árvore sintática concreta produzida pelo Lark.",
     )
+    parser.add_argument(
+        "-p",
+        "--pm",
+        action="store_true",
+        help="Habilita o post-mortem debugger em caso de falha.",
+    )
+    parser.add_argument(
+        "-s",
+        "--show",
+        action="store_true",
+        help="Mostra o código fonte do arquivo de entrada.",
+    )
     return parser
 
 
@@ -68,8 +80,22 @@ def main():
         print(f"Arquivo {args.file} não encontrado.")
         exit(1)
 
+    if args.show:
+        line_len = 60
+        head = f"=== {args.file} ="
+        head += "=" * (line_len - len(head))
+        print_color(head, "blue")
+        print()
+        print_color(source, "yellow")
+        print_color("=" * line_len, "blue")
+        print()
+
     if not args.ast and not args.cst and not args.lex:
-        lox_eval(source)
+        try:
+            lox_eval(source)
+        except Exception as e:
+            on_error(e, args.pm)
+
     else:
         debug_source(source, args)
 
@@ -147,3 +173,21 @@ def repl():
 
         if value is not None:
             print(lox_repr(value))
+
+
+def on_error(exception: Exception, pm: bool):
+    if not pm:
+        raise exception
+
+    from ipdb import post_mortem  # type: ignore[import-untyped]
+
+    post_mortem(exception.__traceback__)
+
+
+def print_color(str: str, color: str):
+    try:
+        from rich import print
+
+        print(f"[{color}]{str}[/{color}]")
+    except ImportError:
+        print(str)
