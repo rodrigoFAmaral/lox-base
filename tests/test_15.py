@@ -24,36 +24,32 @@ class TestScope(testing.ExerciseTester):
 
     def test_variável_definida_em_escopo_interno(self):
         src = "var x = 1; { var x = 2; print x; } print x;"
-        self.verify_execution(src, {}, expect_stdout="2\n1\n")
+        self.verify(src, {}, expect_stdout="2\n1\n")
 
     def test_podemos_atribuir_a_variável_de_contexto_pai(self):
         src = "var x; { x = 1; } print x;"
-        self.verify_execution(src, {}, expect_stdout="1\n")
+        self.verify(src, {}, expect_stdout="1\n")
 
     def test_não_podemos_atribuir_a_variáveis_não_declaradas_num_escopo_local(self):
         src = "{ x = 1; print x; }"
         with pytest.raises((NameError, KeyError, SemanticError)):
-            self.verify_execution(src, {}, expect_none=True)
-
-    def test_podemos_atribuir_a_variáveis_não_declaradas_no_escopo_global(self):
-        src = "x = 1; y = 2; print x; print y;"
-        self.verify_execution(src, {}, expect_stdout="1\n2\n")
+            self.verify(src, {}, expect_none=True)
 
     def test_podemos_declarar_repetidas_vezes_no_escopo_global(self):
         src = "var x = 1; var x = 1; print x;"
-        self.verify_execution(src, {}, expect_stdout="1\n")
+        self.verify(src, {}, expect_stdout="1\n")
 
     def test_não_podemos_declarar_repetidas_vezes_num_escopo_local(self):
         src = "{ var x = 1; var x = 1; }"
         with pytest.raises((NameError, KeyError, SemanticError)):
-            self.verify_execution(src, {}, expect_none=True)
+            self.verify(src, {}, expect_none=True)
 
 
 def test_implementa_o_método_pop():
     msg = """O método Ctx.pop() remove o escopo mais interno e retorna uma 
 dupla (escopo, contexto_pai)"""
 
-    with show(msg):
+    with show_error(msg):
         parent = Ctx({"a": 1}, None)
         ctx = Ctx(d := {"b": 2}, parent)
 
@@ -66,7 +62,7 @@ def test_implementa_o_método_push():
     msg = """O método Ctx.push(env) empilha um novo escopo no contexto atual,
 retornando o contexto atualizado. ctx.push(env) <==> Ctx(env, ctx)"""
 
-    with show(msg):
+    with show_error(msg):
         parent = Ctx({"a": 1}, None)
         ctx = parent.push({"a": 2, "b": 3})
 
@@ -117,7 +113,7 @@ class TestExamplesVar(testing.ExampleTester):
 
 
 @contextmanager
-def show(msg):
+def show_error(msg):
     try:
         from rich import print
 

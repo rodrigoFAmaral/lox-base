@@ -26,7 +26,7 @@ class TestSetattr(testing.ExerciseTester):
         ctx = {"obj": obj}
         print(ctx)
         expect = Obj(attr=Obj(subattr=42.0))
-        self.verify_execution("obj.attr.subattr = 42", ctx, expect_none=True)
+        self.verify("obj.attr.subattr = 42", ctx, expect_none=True)
         ast = self.parse("obj.attr.subattr = 42")
         ast.eval(Ctx.from_dict({"obj": obj}))
         assert obj == expect

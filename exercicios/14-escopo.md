@@ -80,10 +80,9 @@ chamar esse método de var_def. Assim, precisamos fazer a seguinte tradução:
 
 Adapte os métodos Assign.eval e VarDef.eval para utilizar o método correto.
 
-Durante esse exercício, será necessário implementar alguns outros métodos da
-nossa classe de contexto, mas esse processo pode ser guiado pelas mensagens de
-erro nos testes.
+Durante essa atividade, será necessário implementar alguns outros métodos da 
+classe `Ctx`. Esse processo é guiado pelas mensagens de erro nos testes.
 
-No fim do exercício, teremos uma classe Ctx capaz de fazer tudo que a antiga
+No fim da atividade, teremos uma classe Ctx capaz de fazer tudo que a antiga
 implementação fazia e algumas coisas a mais. Podemos esperar que todos os testes
-antigos passem no final da implementação.
+antigos passem ao final da implementação.

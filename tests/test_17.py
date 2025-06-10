@@ -34,7 +34,7 @@ class TestFunction(testing.ExerciseTester):
     def test_declara_função_sem_return(self):
         src = "fun f() { }"
 
-        self.verify_ast(src)
+        self._verify_ast(src)
 
 
 class TestExamples(testing.ExampleTester):

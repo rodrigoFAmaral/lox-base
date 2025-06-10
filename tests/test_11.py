@@ -27,7 +27,7 @@ class TestWhile(testing.ExerciseTester):
 
     def test_termina_laço_quando_a_condição_é_falsa(self):
         src = "while (n > 0) { print n; n = n - 1; }"
-        _, stdout = self.eval_in_context(src, {"n": 4})
+        _, stdout = self._eval_in_context(src, {"n": 4.0})
         self.assert_stdout_eq(stdout, "4\n3\n2\n1\n")
 
 
