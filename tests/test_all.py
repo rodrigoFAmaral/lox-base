@@ -13,22 +13,27 @@ def examples():
     excluded_mods = {"benchmark", "scanning", "limit", "expressions"}
     excluded_tests = {
         # Sem limites arbitrários
-        "method": {"too_many_arguments", "too_many_parameters"},
+        "method": {
+            "too_many_arguments",
+            "too_many_parameters",
+        },
         "function": {
             "too_many_arguments",
             "too_many_parameters",
             "local_mutual_recursion",
         },
         # Py-lox não realiza o early binding
-        "closure": {"close_over_method_parameter", "assign_to_shadowed_later"},
-        "variable": {"early_bound"},
+        "closure": {
+            "close_over_method_parameter",
+            "assign_to_shadowed_later",
+        },
+        "variable": {
+            "early_bound",
+        },
     }
 
     for subdir in sorted(EXAMPLES_PATH.iterdir()):
-        if not subdir.is_dir():
-            continue
-        mod = subdir.name
-        if mod in excluded_mods:
+        if not subdir.is_dir() or (mod := subdir.name) in excluded_mods:
             continue
 
         exclude = excluded_tests.get(mod, set())
@@ -39,7 +44,8 @@ def get_id(example: Path):
     """
     Gera um ID para o exemplo.
     """
-    return str(example.name).removesuffix(".lox")
+    path = example.relative_to(EXAMPLES_PATH)
+    return str(path).removesuffix(".lox").replace("\\", "/")
 
 
 @pytest.mark.full_suite

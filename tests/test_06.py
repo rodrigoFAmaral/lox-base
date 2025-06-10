@@ -21,9 +21,9 @@ class TestLogicalOperators(testing.ExerciseTester):
             "f": lambda: True,
             "y": False,
             "g": lambda: True,
-            "z": 1,
-            "a": 0,
-            "b": 2,
+            "z": 1.0,
+            "a": 0.0,
+            "b": 2.0,
         }
         result = True
         return (ctx, result)
