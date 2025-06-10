@@ -10,4 +10,6 @@ fun i_am_your_father(n) {
 }
 
 var f = i_am_your_father(3);
-f(); // no. no.. no...
+f(); // expect: no.
+     // expect: no..
+     // expect: no...
