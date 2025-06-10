@@ -181,21 +181,21 @@ class ExampleTester:
 
         if not hasattr(cls, "module"):
             raise RuntimeError(f"Classe {name} deve definir o atributo 'module'")
-        if cls.examples is None and cls.exclude is None:
-            msg = f"Classe {name} deve definir atributos 'examples' ou 'exclude'"
-            raise RuntimeError(msg)
-
         if cls.exclude is not None:
             examples = [*load_examples(cls.module, exclude=cls.exclude)]
-        else:
+        elif cls.examples is not None:
             examples = [*load_examples(cls.module, only=cls.examples)]
+        else:
+            examples = [*load_examples(cls.module)]
 
         names = [p.name.removesuffix(".lox") for p in examples]
 
         @pytest.mark.parametrize("path", examples, ids=names)
         def test_expected(self, path: Path):
             ex = Example(
-                path.read_text(encoding="utf-8"), path=path, fuzzy=cls.fuzzy_output
+                path.read_text(encoding="utf-8"),
+                path=path,
+                fuzzy=cls.fuzzy_output,
             )
             ex.test_example()
 
@@ -265,30 +265,30 @@ class ExerciseTester:
         # Criamos testes com o número correto de parametrizações
         # Isso evita um número excessivo de testes pulados
         @pytest.mark.parametrize("n", src_indexes)
-        def test_exemplo_produz_cst_válida(self, n: int, grade):
-            self.verify_cst(n, grade)
+        def test_exemplo_produz_cst_válida(self: "ExerciseTester", n: int, grade):
+            self._verify_cst(n, grade)
 
         @pytest.mark.parametrize("n", src_indexes)
-        def test_exemplo_produz_ast_válida(self, n: int, grade):
-            self.verify_ast(n, grade)
+        def test_exemplo_produz_ast_válida(self: "ExerciseTester", n: int, grade):
+            self._verify_ast(n, grade)
 
         @pytest.mark.parametrize("n", src_indexes)
-        def test_implementa_a_função_eval(self, n: int, grade):
-            self.verify_eval(n, grade)
+        def test_função_eval(self: "ExerciseTester", n: int, grade):
+            self._verify_eval(n, grade)
 
         @pytest.mark.parametrize("n", src_indexes)
-        def test_implementa_a_função_eval_alt(self, n: int, grade):
-            self.verify_eval(n, grade, alt=True)
+        def test_função_eval_alt(self: "ExerciseTester", n: int, grade):
+            self._verify_eval(n, grade, alt=True)
 
         if cls.test_cst:
             cls.test_exemplo_produz_cst_válida = test_exemplo_produz_cst_válida
         if cls.test_ast:
             cls.test_exemplo_produz_ast_válida = test_exemplo_produz_ast_válida
         if cls.test_eval:
-            cls.test_implementa_a_função_eval = test_implementa_a_função_eval
+            cls.test_função_eval = test_função_eval
 
         if hasattr(cls, "eval_env_alt"):
-            cls.test_implementa_a_função_eval_alt = test_implementa_a_função_eval_alt
+            cls.test_função_eval_alt = test_função_eval_alt
 
     def parse_cst(self, src: str) -> Tree:
         if not src:
@@ -348,7 +348,16 @@ class ExerciseTester:
         except AttributeError:
             pytest.skip(f"Ambiente de avaliação para exemplo {i} não definido")
 
-    def verify_cst(self, n: int, grade=lambda **kwargs: None):
+    def assert_stdout_eq(self, stdout: str, expect: str):
+        """
+        Verifica se a saída padrão é igual à esperada.
+        """
+        if self.fuzzy_output:
+            assert fuzzy(expect) == stdout
+        else:
+            assert stdout == expect
+
+    def _verify_cst(self, n: int, grade=lambda **kwargs: None):
         grade(cst_or=1.0)
 
         cst = self.cst(n)
@@ -359,7 +368,7 @@ class ExerciseTester:
         for tk in self.tks(n):
             assert tk in pretty, f"Token '{tk}' não encontrado na CST: {pretty}"
 
-    def verify_ast(self, n: int | str, grade=lambda **kwargs: None):
+    def _verify_ast(self, n: int | str, grade=lambda **kwargs: None):
         grade(ast_or=1.0)
 
         ast = self.ast(n)
@@ -387,7 +396,7 @@ class ExerciseTester:
             msg = f"Você esqueceu de transformar um {elem} em {cls.__name__}?"
             assert False, msg
 
-    def verify_eval(self, n, grade, alt=False):
+    def _verify_eval(self, n, grade, alt=False):
         grade(eval_or=1.0)
 
         src = self.src(n)
@@ -403,20 +412,11 @@ class ExerciseTester:
         try:
             verifier = getattr(self, "verify_eval_result")
         except AttributeError:
-            self.verify_execution(self.ast(n), ctx, expect)
+            self.verify(self.ast(n), ctx, expect)
         else:
-            self.verify_execution(self.ast(n), ctx, expect_verifier=verifier)
+            self.verify(self.ast(n), ctx, expect_verifier=verifier)
 
-    def assert_stdout_eq(self, stdout: str, expect: str):
-        """
-        Verifica se a saída padrão é igual à esperada.
-        """
-        if self.fuzzy_output:
-            assert fuzzy(expect) == stdout
-        else:
-            assert stdout == expect
-
-    def eval_in_context(self, ast: Node | str, env: Ctx | dict) -> tuple[Any, str]:
+    def _eval_in_context(self, ast: Node | str, env: Ctx | dict) -> tuple[Any, str]:
         """
         Avalia e retorna uma tupla (resultado, stdout).
         """
@@ -437,7 +437,7 @@ class ExerciseTester:
 
         return result, stdout
 
-    def verify_execution(
+    def verify(
         self, ast: Node | str, ctx: Ctx | dict, expect: Any = NOT_GIVEN, **kwargs
     ):
         """
@@ -462,7 +462,11 @@ class ExerciseTester:
                     ctx: compara o contexto com um dicionário.
                     stdout: compara a saída padrão com uma string.
                     verifier: chama uma função de verificação com os resultados.
+                        a função deve aceitar três argumentos:
+                        o resultado, a saída padrão e o contexto.
+
                     none: não verifica nada.
+                    raises: espera que uma exceção seja levantada.
 
         Examples:
             >>> self.verify_execution(
@@ -471,14 +475,10 @@ class ExerciseTester:
             ...     expect_stdout="42\n"
             ... )
         """
-        print("Avaliando com o contexto:", ctx)
-
-        if not isinstance(ctx, Ctx):
-            ctx = Ctx.from_dict(ctx)
-        result, stdout = self.eval_in_context(ast, ctx)
+        print("Avaliando com o contexto:", ctx, "")
 
         if expect is NOT_GIVEN and len(kwargs) != 1:
-            msg = "aceita exatamente 1 argumento nomeado (expect_value, expect_ctx, expect_stdout, expect_verifier)"
+            msg = "aceita exatamente 1 argumento nomeado (expect_value, expect_ctx, expect_stdout, expect_verifier, expect_raises)"
             raise TypeError(msg)
         elif expect is NOT_GIVEN:
             [(method, expect)] = kwargs.items()
@@ -493,6 +493,24 @@ class ExerciseTester:
                 method = "ctx"
             else:
                 method = "unknown"
+
+        if not isinstance(ctx, Ctx):
+            ctx = Ctx.from_dict(ctx)
+
+        if method == "raises":
+            print(f"Espera-se exceção:\n    {expect}\n")
+            try:
+                result, stdout = self._eval_in_context(ast, ctx)
+            except expect:
+                return
+            except Exception:
+                raise
+            else:
+                print("Resultado:", result)
+                print("Código executado, mas deveria ter levantado erro.")
+                return
+
+        result, stdout = self._eval_in_context(ast, ctx)
 
         match method:
             # Em expressões, o resultado é o valor da expressão.
@@ -610,9 +628,9 @@ def load_examples(
                 raise FileNotFoundError(f"Exemplo {path} não encontrado")
         return
 
-    for path in sorted((base).iterdir()):
+    for path in sorted(base.iterdir()):
         name = path.name.removesuffix(".lox")
-        if name not in exclude:
+        if name not in exclude and not path.is_dir():
             yield path
 
 

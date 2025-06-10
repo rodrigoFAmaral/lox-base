@@ -24,7 +24,11 @@ __all__ = [
 ]
 
 
-def eval(src: str | Node, env: Ctx | dict[str, Value] | None = None) -> Value:
+def eval(
+    src: str | Node,
+    env: Ctx | dict[str, Value] | None = None,
+    skip_validation: bool = False,
+) -> Value:
     """
     Avalia o código fonte e retorna o valur resultante.
 
@@ -35,6 +39,8 @@ def eval(src: str | Node, env: Ctx | dict[str, Value] | None = None) -> Value:
             Ambiente onde as variáveis serão avaliadas. Se omitido, um novo
             ambiente vazio será criado. Aceita um dicionário mapeando nomes de
             variáveis para seus valores ou uma instância de `Ctx`.
+        skip_validation:
+            Se `True`, ignora a validação do código fonte antes da avaliação.
     """
     if env is None:
         env = Ctx.from_dict({})
@@ -45,6 +51,9 @@ def eval(src: str | Node, env: Ctx | dict[str, Value] | None = None) -> Value:
         ast = src
     else:
         ast = parse(src)
+
+    if not skip_validation:
+        ast.validate_tree()
 
     try:
         return ast.eval(env)
