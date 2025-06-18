@@ -10,16 +10,16 @@ from .ctx import Ctx
 # A classe Node implementa um método `pretty` que imprime as árvores de forma
 # legível. Também possui funcionalidades para navegar na árvore usando cursores
 # e métodos de visitação.
-from .node import Node
 
+from .node import Node
 
 #
 # TIPOS BÁSICOS
 #
 
 # Tipos de valores que podem aparecer durante a execução do programa
-Value = bool | str | float | None
 
+Value = bool | str | float | None | Callable
 
 class Expr(Node, ABC):
     """
@@ -115,14 +115,31 @@ class And(Expr):
 
     Ex.: x and y
     """
+    left: Expr
+    right: Expr
+
+    def eval(self, ctx: Ctx):
+        left_val = self.left.eval(ctx)
+        if left_val is None or left_val is False:
+            return left_val
+        return self.right.eval(ctx)
 
 
 @dataclass
 class Or(Expr):
     """
     Uma operação infixa com dois operandos.
+
     Ex.: x or y
     """
+    left: Expr
+    right: Expr
+
+    def eval(self, ctx: Ctx):
+        left_val = self.left.eval(ctx)
+        if left_val is not None and left_val is not False:
+            return left_val
+        return self.right.eval(ctx)
 
 
 @dataclass
@@ -132,28 +149,33 @@ class UnaryOp(Expr):
 
     Ex.: -x, !x
     """
+    expr: Expr
+    op: Callable[[Value], Value]
 
+    def eval(self, ctx: Ctx):
+        value = self.expr.eval(ctx)
+        return self.op(value)
 
+'''
 @dataclass
 class Call(Expr):
     """
     Uma chamada de função.
 
     Ex.: fat(42)
-    """
+    
+    """ 
     name: str
     params: list[Expr]
-    
+
     def eval(self, ctx: Ctx):
-        func = ctx[self.name]
-        params = []
-        for param in self.params:
-            params.append(param.eval(ctx))
-        
+        func = self.callee.eval(ctx)
+        params = [param.eval(ctx) for param in self.params]
+
         if callable(func):
             return func(*params)
         raise TypeError(f"{self.name} não é uma função!")
-
+'''
 
 @dataclass
 class This(Expr):
@@ -172,7 +194,6 @@ class Super(Expr):
     Ex.: super.x
     """
 
-
 @dataclass
 class Assign(Expr):
     """
@@ -180,15 +201,42 @@ class Assign(Expr):
 
     Ex.: x = 42
     """
+    name: str
+    value: Expr
+
+    def eval(self, ctx: Ctx):
+        key = self.name
+        value = self.value.eval(ctx)
+        ctx[key] = value
+        return value
+
+@dataclass
+class Call(Expr):
+    """
+    Chamada de função, onde o callee é qualquer expressão (ex.: obj.method).
+    """
+    callee: Expr
+    arguments: list[Expr]
+
+    def eval(self, ctx: Ctx):
+        func_value = self.callee.eval(ctx)
+        arg_vals = [a.eval(ctx) for a in self.arguments]
+        if callable(func_value):
+            return func_value(*arg_vals)
+        raise TypeError("Expressão não é chamável!")
 
 
 @dataclass
 class Getattr(Expr):
     """
-    Acesso a atributo de um objeto.
-
-    Ex.: x.y
+    Acesso a atributo de um objeto. Ex.: obj.atributo
     """
+    expr: Expr
+    attr: str
+
+    def eval(self, ctx: Ctx):
+        value = self.expr.eval(ctx)
+        return getattr(value, self.attr)
 
 
 @dataclass
@@ -198,7 +246,15 @@ class Setattr(Expr):
 
     Ex.: x.y = 42
     """
+    expr: Expr
+    attr: str
+    value: Expr
 
+    def eval(self, ctx: Ctx):
+        obj = self.expr.eval(ctx)
+        val = self.value.eval(ctx)
+        setattr(obj, self.attr, val)
+        return val
 
 #
 # COMANDOS
@@ -214,7 +270,18 @@ class Print(Stmt):
     
     def eval(self, ctx: Ctx):
         value = self.expr.eval(ctx)
-        print(value)
+        if value is True:
+            print("true")
+        elif value is False:
+            print("false")
+        elif value is None:
+            print("nil")
+        else:
+            print(value)
+        # Handle floats like 0.0 vs 0 if necessary.
+        # If your Lox numbers are always floats, 0 and 0.0 are the same.
+        # If your Lox numbers distinguish integers and floats, you might need to
+        # cast or format differently for integers.
 
 
 @dataclass
@@ -225,6 +292,12 @@ class Return(Stmt):
     Ex.: return x;
     """
 
+    expr: Expr
+
+    def eval(self, ctx: Ctx):
+        value = self.expr.eval(ctx)
+        raise LoxReturn(value)
+
 
 @dataclass
 class VarDef(Stmt):
@@ -234,6 +307,14 @@ class VarDef(Stmt):
     Ex.: var x = 42;
     """
 
+    name: str
+    value: Expr
+
+    def eval(self, ctx: Ctx):
+        key = self.name
+        value = self.value.eval(ctx)
+        ctx.var_def(key, value)
+
 
 @dataclass
 class If(Stmt):
@@ -242,6 +323,17 @@ class If(Stmt):
 
     Ex.: if (x > 0) { ... } else { ... }
     """
+
+    cond: Expr
+    then: Stmt
+    orelse: Stmt
+
+    def eval(self, ctx: Ctx):
+        cond = self.cond.eval(ctx)
+        if is_lox_true(cond):
+            self.then.eval(ctx)
+        else:
+            self.orelse.eval(ctx)
 
 
 @dataclass
@@ -261,14 +353,30 @@ class While(Stmt):
     Ex.: while (x > 0) { ... }
     """
 
+    cond: Expr
+    body: Stmt
+
+    def eval(self, ctx: Ctx):
+        cond = self.cond.eval(ctx)
+        if is_lox_true(cond):
+            self.body.eval(ctx)
+            self.eval(ctx)
+
 
 @dataclass
-class Block(Node):
+class Block(Stmt):
     """
     Representa bloco de comandos.
 
     Ex.: { var x = 42; print x;  }
     """
+
+    stmts: list[Stmt]
+
+    def eval(self, ctx: Ctx):
+        ctx = ctx.push({})
+        for stmt in self.stmts:
+            stmt.eval(ctx)
 
 
 @dataclass
@@ -279,6 +387,15 @@ class Function(Stmt):
     Ex.: fun f(x, y) { ... }
     """
 
+    name: str
+    arg_names: list[str]
+    body: list[Stmt]
+
+    def eval(self, ctx: Ctx):
+        func = LoxFunction(self.arg_names, self.body, ctx)
+        ctx.var_def(self.name, func)
+        return func
+
 
 @dataclass
 class Class(Stmt):
@@ -287,3 +404,46 @@ class Class(Stmt):
 
     Ex.: class B < A { ... }
     """
+
+
+def is_lox_true(value):
+    return (value is not False) and (value is not None)
+
+
+@dataclass
+class LoxFunction:
+    """
+    Representa uma função lox em tempo de execução
+    """
+
+    arg_names: list[str]
+    body: list[Stmt]
+    ctx: Ctx
+
+    def __call__(self, *values):
+        """
+        self.__call__(*args) <==> self(*args)
+        """
+        names = self.arg_names
+        if len(names) != len(values):
+            msg = f"esperava {len(names)} argumentos, recebeu {len(values)}"
+            raise TypeError(msg)
+
+        # Associa cada nome em names ao valor correspondente em values
+        scope = dict(zip(names, values))
+
+        # Avalia cada comando no corpo da função dentro do escopo local
+        ctx = Ctx(scope, self.ctx)
+        try:
+            for stmt in self.body:
+                stmt.eval(ctx)
+        except LoxReturn as e:
+            return e.value
+
+
+class LoxReturn(Exception):
+    value: Value
+
+    def __init__(self, value):
+        self.value = value
+        super().__init__()
