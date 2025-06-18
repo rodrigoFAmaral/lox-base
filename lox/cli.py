@@ -19,7 +19,7 @@ from lark import Token
 from . import eval as lox_eval
 from .ctx import Ctx
 from .parser import lex, parse, parse_cst, parse_expr
-from .runtime import show_repr as lox_repr
+#from .runtime import show_repr as lox_repr
 
 
 def make_argparser():

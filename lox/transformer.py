@@ -9,6 +9,7 @@ métodos desta classe.
 
 from typing import Callable
 from lark import Transformer, v_args
+
 from . import runtime as op
 from .ast import *
 
@@ -28,11 +29,9 @@ def op_handler(op: Callable):
 
 @v_args(inline=True)
 class LoxTransformer(Transformer):
-    #Programa 
-
+    # Programa
     def program(self, *stmts):
         return Program(list(stmts))
-    
 
     # Operações matemáticas básicas
     mul = op_handler(op.mul)
@@ -49,96 +48,71 @@ class LoxTransformer(Transformer):
     ne = op_handler(op.ne)
 
     # Outras expressões
-
-    def call(self, callee, arguments):
-        return Call(callee, arguments)
-
-    # Parâmetros
+    def call(self, callee: Expr, params=None):
+        return Call(callee, params or [])
+        
     def params(self, *args):
         return list(args)
 
-    # Acesso a atributo    
-    def getattr(self, obj_expr, attr_name):
-        return Getattr(obj_expr, str(attr_name))
-    
+    def getattr(self, obj, name):
+        return Getattr(obj, name.name)
 
+    # Operadores unários
+    def neg(self, operand):
+        return UnaryOp(operand, op.neg) 
+
+    def not_(self, operand):
+        return UnaryOp(operand, op.not_)
+    
+    # Operadores lógicos
+    def and_(self, left, right):
+        return And(left, right)
+    
+    def or_(self, left, right):
+        return Or(left, right)
+    
+    # Atribuições
+    def assign(self, name: Var, value: Expr):
+        return Assign(name.name, value)
+
+    def setattr_assign(self, target, value):
+        return Setattr(target.obj, target.name, value)
+    
     # Comandos e literais
+    def print_cmd(self, expr):
+        return Print(expr)
+
+    def var_decl(self, name, initializer=None):
+        if initializer is None:
+            initializer = Literal(None)
+        return VarDef(name.name, initializer)
+
     def block(self, *stmts):
         return Block(list(stmts))
     
-    def assign(self, var_token, value_expr):
-        if isinstance(var_token, Var):
-            name = var_token.name
-        else:
-            name = str(var_token)
-        return Assign(name, value_expr)
+    def if_cmd(self, condition, then_branch, else_branch=None):
+        if else_branch is None:
+            else_branch = Block([]) # Bloco vazio se não houver else
+        return If(condition, then_branch, else_branch)
+
+    def while_cmd(self, condition, body):
+        return While(condition, body)
     
-    def print_cmd(self, expr):
-        return Print(expr)
-    
-    def if_cmd(self, cond: Expr, then: Stmt, orelse: Stmt = Block([])):
-        return If(cond, then, orelse)
+    def expr_stmt(self, expr):
+        return ExprStmt(expr)
 
-    def while_cmd(self, cond: Expr, body: Stmt):
-        return While(cond, body)
-
-    def for_cmd(self, for_args: tuple, body: Stmt):
-        """
-        Fazemos a transformação (desugar)
-
-        De:
-            for (init; cond; incr) body
-
-        Para:
-        {
-            init
-            while (cond) {
-                body;
-                incr;
-            }
-        }
-        """
-        init, cond, incr = for_args
-        return Block(
-            [
-                init,
-                While(
-                    cond,
-                    Block(
-                        [
-                            body,
-                            incr,
-                        ]
-                    ),
-                ),
-            ]
-        )
-
-    def for_args(self, arg1, arg2, arg3):
-        return (arg1, arg2, arg3)
-
-    def opt_expr(self, arg=None):
-        if arg is None:
-            arg = True
-        return arg
-    
-    def fun_def(self, name: Var, args: list[str], body: Block):
-        return Function(name.name, args, body.stmts)
-        
-    def fun_args(self, *args: Var) -> list[str]:
-        return [arg.name for arg in args]
-    
-    def return_cmd(self, expr: Expr = Literal(None)):
-        return Return(expr)
-
+    # Literais e Variáveis
     def VAR(self, token):
-        return Var(str(token))
+        name = str(token)
+        return Var(name)
 
     def NUMBER(self, token):
-        return Literal(float(token))
+        num = float(token)
+        return Literal(num)
     
     def STRING(self, token):
-        return Literal(str(token)[1:-1])
+        text = str(token)[1:-1]
+        return Literal(text)
     
     def NIL(self, _):
         return Literal(None)
@@ -146,17 +120,55 @@ class LoxTransformer(Transformer):
     def BOOL(self, token):
         return Literal(token == "true")
 
-    def logand(self, left, _and, right):
-        return And(left, right)
+    # Tratamento de 'for' (desugaring para 'while')
+    def empty_init(self):
+        return None 
 
-    def logor(self, left, _or, right):
-        return Or(left, right)
+    def empty_cond(self):
+        return Literal(True)
 
-    def setattr(self, obj, attr_name, value_expr):
-        return Setattr(obj, str(attr_name), value_expr)
+    def empty_incr(self):
+        return None
 
-    def neg(self, expr):
-        return UnaryOp(expr, op.neg)
+    def for_cmd(self, init, cond, incr, body):
+        # Constrói o corpo do while
+        while_body = [body]
+        if incr is not None:
+            while_body.append(ExprStmt(incr))
+        
+        # Constrói o laço while
+        if cond is None:
+            cond = Literal(True)
+        loop = While(cond, Block(while_body))
 
-    def not_(self, expr):
-        return UnaryOp(expr, op.not_)
+        # Adiciona o inicializador, se existir
+        if init is not None:
+            return Block([init, loop])
+        
+        return loop
+    
+    # Funções e retornos
+    def return_stmt(self, value=None):
+        return Return(value)
+
+    def function_declaration(self, name, params, body):
+        return Function(name.name, params or [], body)
+
+    def fun_params(self, *params):
+        return list(params)
+    
+    def this(self, _):
+        return This()
+
+    def super_getattr(self, name):
+        return Super(name.name)
+    
+    def class_declaration(self, name):
+        # 'name' é um nó Var, então pegamos seu nome como string
+        return Class(name.name)
+
+    def function_declaration(self, name, params, body):
+        return Function(name.name, params or [], body)
+
+    def fun_params(self, *params):
+        return list(params)

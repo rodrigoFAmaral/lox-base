@@ -1,46 +1,62 @@
 ?start     : program
 
-program    : decl*
+program    : declaration*
 
-?decl      : stmt
-           | var_def
-           | fun_def
+?declaration : class_decl
+             | fun_decl
+             | var_decl
+             | stmt
 
-var_def    : "var" VAR "=" expr ";"
-fun_def    : "fun" VAR "(" fun_args ")" block
-fun_args   : [ VAR ("," VAR)* ]
-return_cmd : "return" expr? ";"
+class_decl   : "class" VAR "{" "}" -> class_declaration
 
+fun_decl   : "fun" VAR "(" fun_params ")" block -> function_declaration
+fun_params : [VAR ("," VAR)*]
 
-?stmt      : expr ";"
+?stmt      : expr ";" -> expr_stmt
            | print_cmd
-           | if_cmd
-           | for_cmd
-           | while_cmd
            | block
+           | if_cmd
+           | while_cmd
+           | for_cmd
            | return_cmd
 
-if_cmd     : "if" "(" expr ")" stmt [ "else" stmt ]
-while_cmd  : "while" "(" expr ")" stmt
-for_cmd    : "for" "(" for_args ")" stmt
-for_args   : (var_def | opt_expr ";") opt_expr ";" opt_expr
-opt_expr   : expr?
+for_cmd : "for" "(" for_init for_cond ";" for_incr ")" stmt -> for_cmd
+
+?for_init : var_decl
+          | expr ";"
+          | ";"   -> empty_init
+
+?for_cond : expr
+          |         -> empty_cond
+
+?for_incr : expr
+          |         -> empty_incr
+
+while_cmd  : "while" "(" expr ")" stmt -> while_cmd
+         
+if_cmd   : "if" "(" expr ")" stmt ("else" stmt)? -> if_cmd
+
+block      : "{" declaration* "}"
 
 print_cmd  : "print" expr ";"
-block      : "{" decl* "}"
+
+return_cmd : "return" expr? ";" -> return_stmt
+
+var_decl   : "var" VAR ("=" expr)? ";" -> var_decl
 
 // EXPRESSÕES
+?expr      : assignment
 
-?expr      : assign
+?assignment  : getattr "=" assignment   -> setattr_assign
+           | VAR "=" assignment   -> assign
+           | logic
 
-?assign    : VAR "=" expr 
-           | atom "." NAME "=" expr -> setattr
+?logic     : logic "or" test -> or_
+           | logic "and" test -> and_
            | test
 
-?test      : test AND cmp     -> logand
-           | test OR  cmp     -> logor
-           | test "==" cmp    -> eq
-           | test "!=" cmp    -> ne
+?test      : test "==" cmp  -> eq
+           | test "!=" cmp  -> ne
            | cmp
 
 ?cmp       : cmp ">" factor   -> gt
@@ -53,34 +69,33 @@ block      : "{" decl* "}"
            | factor "-" term  -> sub
            | term
 
-?term      : term "*" atom   -> mul
-           | term "/" atom   -> div
+?term      : term "*" unary  -> mul
+           | term "/" unary   -> div 
            | unary
 
-?unary     : "-" unary       -> neg
-           | "!" unary       -> not_
+?unary     : "-" unary -> neg
+           | "!" unary -> not_
            | atom
 
-?atom      : NUMBER
+?atom      : call
+           | getattr
+           | NUMBER
            | BOOL
            | VAR
            | STRING
            | NIL
-           | "(" cmp ")"
-           | atom "." NAME -> getattr
-           | call
-           
-call       : VAR "(" params ")"
-params     : [ expr ("," expr )* ]
+           | "(" expr ")"
+
+getattr    : atom "." VAR
+ 
+call       : atom "(" params ")"
+params     : [expr ("," expr)*]
 
 BOOL.2     : "true" | "false"
-VAR.1      : /[a-z_A-Z]\w*/
-NUMBER     : /([1-9][0-9]*|0)(\.[0-9]+)?/
+VAR        : /[a-zA-Z_]\w*/
+NUMBER     : /([1-9][0-9]*|0)(\.[0-9]+)?/ 
 STRING     : /"[^"]*"/
 NIL.2      : "nil"
 COMMENT    : "//" /[^\n]*/
-AND.2      : "and"
-OR.2       : "or"
-NAME       : /[a-zA-Z_][a-zA-Z0-9_]*/
 
 %ignore /\s/ | COMMENT
